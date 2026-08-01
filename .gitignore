@@ -1,0 +1,19 @@
+# Local Android/Gradle state
+.gradle/
+local.properties
+build/
+*/build/
+.idea/
+*.iml
+
+# Local machine and generated files
+*.log
+captures/
+externalNativeBuild/
+cmake-build-*/
+
+# Secrets and release signing material
+*.jks
+*.keystore
+keystore.properties
+secrets.properties

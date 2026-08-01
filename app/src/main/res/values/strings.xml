@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">余额小组件</string>
+    <string name="single_widget_description">显示一个账户的实时余额</string>
+    <string name="multi_widget_description">汇总多个 AI 账户余额</string>
+</resources>

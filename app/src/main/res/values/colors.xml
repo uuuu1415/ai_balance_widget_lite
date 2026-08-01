@@ -1,0 +1,22 @@
+<resources>
+    <color name="widget_bg">#F0F0F8</color>
+    <color name="widget_text">#1A1B20</color>
+    <color name="widget_muted">#45464F</color>
+    <color name="widget_accent">#465D91</color>
+    <color name="md_theme_light_primary">#405F91</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#D6E3FF</color>
+    <color name="md_theme_light_onPrimaryContainer">#001B3E</color>
+    <color name="md_theme_light_surface">#FAF9FF</color>
+    <color name="md_theme_light_onSurface">#1A1B20</color>
+    <color name="md_theme_light_surfaceVariant">#E0E2EC</color>
+    <color name="md_theme_light_outline">#747780</color>
+    <color name="md_theme_dark_primary">#A9C7FF</color>
+    <color name="md_theme_dark_onPrimary">#09305F</color>
+    <color name="md_theme_dark_primaryContainer">#274777</color>
+    <color name="md_theme_dark_onPrimaryContainer">#D6E3FF</color>
+    <color name="md_theme_dark_surface">#121318</color>
+    <color name="md_theme_dark_onSurface">#E2E2E9</color>
+    <color name="md_theme_dark_surfaceVariant">#44474F</color>
+    <color name="md_theme_dark_outline">#8E9099</color>
+</resources>
