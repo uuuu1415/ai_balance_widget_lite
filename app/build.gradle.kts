@@ -4,7 +4,7 @@ plugins {
 }
 
 android { namespace = "com.example.balancewidget"; compileSdk = 35; buildToolsVersion = "36.0.0"
-    defaultConfig { applicationId = "com.example.balancewidget"; minSdk = 26; targetSdk = 35; versionCode = 3; versionName = "1.2.0" }
+    defaultConfig { applicationId = "com.example.balancewidget"; minSdk = 26; targetSdk = 35; versionCode = 4; versionName = "1.2.1" }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_23; targetCompatibility = JavaVersion.VERSION_23 }
     kotlinOptions { jvmTarget = "23" }
     testOptions { unitTests.isReturnDefaultValues = true }
