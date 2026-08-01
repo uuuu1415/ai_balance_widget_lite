@@ -40,6 +40,7 @@ import com.google.android.material.color.DynamicColors
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.radiobutton.MaterialRadioButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -350,12 +351,35 @@ class MainActivity : AppCompatActivity() {
         }
         val field = TextInputLayout(this).apply { hint = "刷新间隔"; addView(input) }
         var selectedUnit = settings.refreshIntervalUnit
+        val unitGroup = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        lateinit var minutesButton: MaterialRadioButton
+        val secondsButton = MaterialRadioButton(this).apply {
+            text = "秒"
+            isChecked = selectedUnit == RefreshIntervalUnit.SECONDS
+            setOnClickListener { selectedUnit = RefreshIntervalUnit.SECONDS; isChecked = true; minutesButton.isChecked = false }
+        }
+        minutesButton = MaterialRadioButton(this).apply {
+            text = "分钟"
+            isChecked = selectedUnit == RefreshIntervalUnit.MINUTES
+            setOnClickListener { selectedUnit = RefreshIntervalUnit.MINUTES; isChecked = true; secondsButton.isChecked = false }
+        }
+        unitGroup.addView(secondsButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        unitGroup.addView(minutesButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val dialogContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+            addView(field, matchWrap(bottom = 4))
+            addView(TextView(context).apply {
+                text = "单位"
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+            }, matchWrap(top = 8))
+            addView(unitGroup, matchWrap())
+        }
         MaterialAlertDialogBuilder(this).setTitle("设置自动刷新间隔")
-            .setView(field)
-            .setSingleChoiceItems(
-                arrayOf(RefreshIntervalUnit.SECONDS.label, RefreshIntervalUnit.MINUTES.label),
-                RefreshIntervalUnit.entries.indexOf(selectedUnit)
-            ) { _, selected -> selectedUnit = RefreshIntervalUnit.entries[selected] }
+            .setView(dialogContent)
             .setMessage("可输入任意非负整数，并选择秒或分钟。输入 0 关闭自动刷新；系统会使用不精确定时任务，实际执行时间可能延后。")
             .setNegativeButton("取消", null)
             .setPositiveButton("保存") { _, _ ->
