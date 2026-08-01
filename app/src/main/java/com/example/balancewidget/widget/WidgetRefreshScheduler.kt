@@ -13,12 +13,12 @@ object WidgetRefreshScheduler {
         val pendingIntent = refreshPendingIntent(context)
         alarmManager.cancel(pendingIntent)
 
-        val minutes = AppSettings(context).refreshIntervalMinutes
-        if (minutes == 0) return
+        val requestedInterval = AppSettings(context).refreshIntervalMillis()
+        if (requestedInterval == 0L) return
 
-        // Android can batch repeating alarms under power-saving policies. Keep the requested
-        // value for the UI, but never register a zero or invalid system interval.
-        val interval = maxOf(minutes * 60_000L, MINIMUM_INTERVAL_MS)
+        // Android can batch repeating alarms under power-saving policies. The configured unit is
+        // preserved, while the registered value is clamped to the platform-safe one-minute floor.
+        val interval = maxOf(requestedInterval, MINIMUM_INTERVAL_MS)
         alarmManager.setInexactRepeating(
             AlarmManager.RTC,
             System.currentTimeMillis() + interval,

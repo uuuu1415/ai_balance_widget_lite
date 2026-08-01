@@ -1,6 +1,6 @@
 # BalanceWidget
 
-一个 Android 原生主屏幕小组件，用于查看 DeepSeek、Sub2API/OneAPI 类中转站和自定义 AI API 账户余额。
+一个 Android 原生主屏幕小组件，用于查看 DeepSeek、已验证的 Sub2API 中转站和自定义 AI API 账户余额。
 
 本项目使用 Vibe Coding 方式开发，主要使用 `GPT-5.6 Terra` 协助完成架构设计、代码编写、重构和文档整理。所有代码仍由项目维护者负责审核、测试和发布。
 
@@ -11,7 +11,7 @@
 - 单账户余额 Widget
 - 多账户余额汇总 Widget
 - DeepSeek 官方余额接口预设
-- Sub2API/OneAPI 类中转站和通用自定义接口
+- 已验证的 Sub2API 中转站和通用自定义接口
 - 自定义 Base URL、API 路径和 JSON 字段路径
 - 点号路径与数组下标，例如 `usage.today.actual_cost`、`data[0].balance`
 - 手动刷新和系统周期刷新
@@ -54,7 +54,7 @@ Debug APK 输出路径：`app/build/outputs/apk/debug/app-debug.apk`。
 在应用中填写：
 
 1. 账户名称。
-2. Provider 类型：`deepseek`、`relay` 或 `custom`。`relay` 用于 Sub2API、OneAPI 及类似中转站。
+2. Provider 类型：`deepseek`、`relay` 或 `custom`。`relay` 是已验证的 Sub2API 中转站示例。
 3. HTTPS Base URL。
 4. GET 余额 API 路径。
 5. Bearer API Key。
@@ -70,7 +70,7 @@ is_available
 
 如果接口返回多个币种，可以调整数组下标选择目标币种。
 
-Sub2API、OneAPI 及其他中转站通常提供余额或用量接口，但接口路径、认证方式和 JSON 字段不完全一致。请优先查阅对应中转站的官方文档，再将 URL、API 路径和 JSON 字段映射填入应用。应用不会假定某个中转站的余额接口一定兼容。
+OneAPI 和其他类型的中转站可能提供余额或用量接口，但当前版本未对它们进行验证。请优先查阅对应中转站的官方文档，再将 URL、API 路径和 JSON 字段映射填入应用。应用不会假定其他中转站的余额接口一定兼容。
 
 ## 架构
 
@@ -97,7 +97,7 @@ Provider 专属解析应保持在数据层，Widget 和界面只消费 `BalanceS
 设置页提供以下选项：
 
 - 系统动态颜色开关、调色盘和自定义 HEX 主题色。
-- Widget 后台刷新间隔：可输入任意非负整数分钟数，输入 `0` 表示仅手动刷新。
+- Widget 后台刷新间隔：可输入任意非负整数，并选择秒或分钟；输入 `0` 表示仅手动刷新。
 - GitHub Releases 更新检查、更新说明和 APK 直接下载。
 - 应用版本、作者、Vibe Coding 声明和 MIT 许可证说明。
 

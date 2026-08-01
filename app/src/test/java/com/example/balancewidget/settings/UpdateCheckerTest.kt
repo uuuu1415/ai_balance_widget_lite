@@ -6,6 +6,12 @@ import org.junit.Test
 
 class UpdateCheckerTest {
     @Test
+    fun convertsRefreshUnitsToMilliseconds() {
+        assertTrue(RefreshIntervalUnit.SECONDS.toMillis(5) == 5_000L)
+        assertTrue(RefreshIntervalUnit.MINUTES.toMillis(2) == 120_000L)
+    }
+
+    @Test
     fun recognizesNewerSemanticVersions() {
         assertTrue(UpdateChecker.isNewer("1.2.0", "1.1.9"))
         assertTrue(UpdateChecker.isNewer("v1.10.0", "1.2.0"))

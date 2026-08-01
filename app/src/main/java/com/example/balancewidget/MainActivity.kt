@@ -30,6 +30,7 @@ import com.example.balancewidget.data.SnapshotStore
 import com.example.balancewidget.widget.WidgetUpdater
 import com.example.balancewidget.widget.WidgetRefreshScheduler
 import com.example.balancewidget.settings.AppSettings
+import com.example.balancewidget.settings.RefreshIntervalUnit
 import com.example.balancewidget.settings.UpdateChecker
 import com.example.balancewidget.settings.ReleaseInfo
 import com.google.android.material.appbar.MaterialToolbar
@@ -166,7 +167,7 @@ class MainActivity : AppCompatActivity() {
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
         }, matchWrap(bottom = 12))
         val name = input(form, "名称", "例如：DeepSeek 个人账号", existing?.name.orEmpty())
-        val provider = input(form, "Provider 类型", "custom、deepseek 或 relay（中转站）", existing?.provider ?: "custom")
+        val provider = input(form, "Provider 类型", "custom、deepseek 或 relay（已测试 Sub2API）", existing?.provider ?: "custom")
         val base = input(form, "Base URL", "例如：https://api.deepseek.com", existing?.baseUrl.orEmpty(), InputType.TYPE_TEXT_VARIATION_URI)
         val path = input(form, "余额 API 路径", "例如：user/balance 或 v1/usage", existing?.path ?: "v1/usage")
         val key = input(form, "API Key", "仅保存于本机，未加密", existing?.apiKey.orEmpty(), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
@@ -180,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         val today = input(form, "今日消费字段路径（可选）", "例如：usage.today.actual_cost", existing?.todayCostPath ?: "usage.today.actual_cost")
         val total = input(form, "累计消费字段路径（可选）", "例如：usage.total.actual_cost", existing?.totalCostPath ?: "usage.total.actual_cost")
         form.addView(TextView(this).apply {
-            text = "路径支持点号与数组下标，如 usage.today.actual_cost、data[0].balance。DeepSeek 类型会自动使用 /user/balance。"
+            text = "路径支持点号与数组下标，如 usage.today.actual_cost、data[0].balance。DeepSeek 类型会自动使用 /user/balance。relay 已按 Sub2API 验证；OneAPI 等其他中转站请按官方文档填写映射。"
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
         }, matchWrap(top = 4, bottom = 16))
         scroll.addView(form)
@@ -254,7 +255,7 @@ class MainActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(20), dp(14), dp(20), dp(14))
                 addView(TextView(context).apply {
-                    text = if (settings.refreshIntervalMinutes == 0) "自动刷新：已关闭" else "自动刷新间隔：${settings.refreshIntervalMinutes} 分钟"
+                    text = refreshIntervalSummary()
                     setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
                 }, matchWrap(bottom = 8))
                 addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
@@ -265,7 +266,7 @@ class MainActivity : AppCompatActivity() {
             addView(row)
         }, matchWrap(bottom = 8))
         content.addView(TextView(this).apply {
-            text = "可输入任意分钟数。Android 会根据省电策略调整后台更新时间；主屏幕刷新按钮始终可以手动查询。"
+            text = "可输入任意秒或分钟数。Android 会根据省电策略调整后台更新时间；低于 60 秒的后台任务会按至少 60 秒注册。主屏幕刷新按钮始终可以手动查询。"
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
         }, matchWrap(bottom = 12))
         content.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
@@ -344,25 +345,35 @@ class MainActivity : AppCompatActivity() {
     private fun chooseRefreshInterval() {
         val input = TextInputEditText(this).apply {
             hint = "例如：30；输入 0 关闭自动刷新"
-            setText(settings.refreshIntervalMinutes.toString())
+            setText(settings.refreshIntervalValue.toString())
             inputType = InputType.TYPE_CLASS_NUMBER
         }
-        val field = TextInputLayout(this).apply { hint = "刷新间隔（分钟）"; addView(input) }
+        val field = TextInputLayout(this).apply { hint = "刷新间隔"; addView(input) }
+        var selectedUnit = settings.refreshIntervalUnit
         MaterialAlertDialogBuilder(this).setTitle("设置自动刷新间隔")
             .setView(field)
-            .setMessage("可输入任意非负整数分钟数。系统会使用不精确定时任务，实际执行时间可能延后。")
+            .setSingleChoiceItems(
+                arrayOf(RefreshIntervalUnit.SECONDS.label, RefreshIntervalUnit.MINUTES.label),
+                RefreshIntervalUnit.entries.indexOf(selectedUnit)
+            ) { _, selected -> selectedUnit = RefreshIntervalUnit.entries[selected] }
+            .setMessage("可输入任意非负整数，并选择秒或分钟。输入 0 关闭自动刷新；系统会使用不精确定时任务，实际执行时间可能延后。")
             .setNegativeButton("取消", null)
             .setPositiveButton("保存") { _, _ ->
-                val minutes = input.text.toString().toIntOrNull()
-                if (minutes == null || minutes < 0) {
+                val value = input.text.toString().toLongOrNull()
+                if (value == null || value < 0) {
                     Toast.makeText(this, "请输入非负整数", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                settings.refreshIntervalMinutes = minutes
+                settings.refreshIntervalValue = value
+                settings.refreshIntervalUnit = selectedUnit
                 WidgetRefreshScheduler.apply(this)
                 showSettings()
             }.show()
     }
+
+    private fun refreshIntervalSummary(): String =
+        if (settings.refreshIntervalValue == 0L) "自动刷新：已关闭"
+        else "自动刷新间隔：${settings.refreshIntervalValue} ${settings.refreshIntervalUnit.label}"
 
     private fun checkForUpdates() {
         Toast.makeText(this, "正在检查更新", Toast.LENGTH_SHORT).show()
