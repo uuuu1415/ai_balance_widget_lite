@@ -34,6 +34,7 @@ class UpdateChecker {
                                 .map { assets.getJSONObject(it) }
                                 .firstOrNull { asset -> asset.optString("name").endsWith(".apk", ignoreCase = true) }
                                 ?.optString("browser_download_url")
+                                ?.takeIf { it.startsWith("https://github.com/") }
                         }
                 )
             } finally {

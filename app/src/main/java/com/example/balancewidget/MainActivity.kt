@@ -405,7 +405,7 @@ class MainActivity : AppCompatActivity() {
             UpdateChecker().latestRelease().onSuccess { release ->
                 val current = BuildConfig.VERSION_NAME
                 if (release.version.isNotBlank() && UpdateChecker.isNewer(release.version, current)) {
-                    showUpdatePage(release)
+                    showUpdateDialog(release)
                 } else Toast.makeText(this@MainActivity, "当前已是最新版本", Toast.LENGTH_LONG).show()
             }.onFailure { error -> Toast.makeText(this@MainActivity, "检查失败：${error.message}", Toast.LENGTH_LONG).show() }
         }
@@ -415,50 +415,43 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
-    private fun showUpdatePage(release: ReleaseInfo) {
-        showingEditor = true
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(toolbar("发现新版本", "${BuildConfig.VERSION_NAME} -> ${release.version}").apply {
-            setNavigationIcon(com.google.android.material.R.drawable.ic_arrow_back_black_24)
-            setNavigationOnClickListener { showSettings() }
-        }, matchWrap())
-        val scroll = ScrollView(this)
-        val content = contentColumn()
-        content.addView(sectionTitle("BalanceWidget ${release.version}"), matchWrap(bottom = 8))
-        content.addView(TextView(this).apply {
-            text = if (release.notes.isBlank()) "此版本未提供更新说明。" else release.notes
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
-        }, matchWrap(bottom = 24))
+    /** Shows release notes in a compact dialog without replacing the current settings screen. */
+    private fun showUpdateDialog(release: ReleaseInfo) {
+        val notes = release.notes.ifBlank { "此版本未提供更新说明。" }
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle("发现新版本 ${release.version}")
+            .setMessage(notes)
+            .setNegativeButton("稍后", null)
+
         if (release.apkUrl != null) {
-            content.addView(MaterialButton(this).apply {
-                text = "下载并更新 APK"
-                setIconResource(android.R.drawable.stat_sys_download)
-                setOnClickListener { downloadUpdate(release) }
-            }, matchWrap())
+            builder.setPositiveButton("下载更新") { _, _ -> downloadUpdate(release) }
         } else {
-            content.addView(emptyState("尚无 APK 下载", "此 Release 没有上传 APK 文件。可以在发布记录中查看详情。"), matchWrap(bottom = 12))
-            content.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
-                text = "查看发布记录"
-                setOnClickListener { openUrl(release.pageUrl) }
-            }, matchWrap())
+            builder.setPositiveButton("查看发布记录") { _, _ -> openUrl(release.pageUrl) }
         }
-        scroll.addView(content)
-        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        setContentView(root)
-        applyCustomColor(root)
-        applyInsets(root)
-        ViewCompat.requestApplyInsets(root)
+        builder.show()
     }
 
     private fun downloadUpdate(release: ReleaseInfo) {
         val apkUrl = release.apkUrl ?: return
-        val request = DownloadManager.Request(Uri.parse(apkUrl))
-            .setTitle("BalanceWidget ${release.version}")
-            .setDescription("正在下载更新安装包")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "BalanceWidget-${release.version}.apk")
-        getSystemService(DownloadManager::class.java).enqueue(request)
-        Toast.makeText(this, "已开始下载，完成后请从通知栏安装", Toast.LENGTH_LONG).show()
+        runCatching {
+            val fileName = "BalanceWidget-${release.version}.apk"
+            val request = DownloadManager.Request(Uri.parse(apkUrl))
+                .setMimeType("application/vnd.android.package-archive")
+                .setTitle("BalanceWidget ${release.version}")
+                .setDescription("正在下载更新安装包")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(false)
+                .setVisibleInDownloadsUi(true)
+                .addRequestHeader("Accept", "application/octet-stream")
+                .addRequestHeader("User-Agent", "BalanceWidget/${BuildConfig.VERSION_NAME}")
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName)
+            getSystemService(DownloadManager::class.java).enqueue(request)
+        }.onSuccess {
+            Toast.makeText(this, "已开始下载，完成后请从通知栏安装", Toast.LENGTH_LONG).show()
+        }.onFailure { error ->
+            Toast.makeText(this, "下载失败：${error.message ?: "无法创建下载任务"}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun sectionTitle(text: String) = TextView(this).apply {
