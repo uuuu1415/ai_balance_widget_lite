@@ -119,4 +119,4 @@ Android 会依据网络和省电策略延后后台刷新，无法保证精确到
 
 ## 项目地址
 
-<https://github.com/uuuu1415/balancewidget-lite>
+<https://github.com/uuuu1415/ai_balance_widget_lite>

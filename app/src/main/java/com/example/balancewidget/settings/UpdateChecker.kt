@@ -44,7 +44,7 @@ class UpdateChecker {
     }
 
     companion object {
-        const val REPOSITORY = "uuuu1415/balancewidget-lite"
+        const val REPOSITORY = "uuuu1415/ai_balance_widget_lite"
         const val RELEASES_URL = "https://github.com/$REPOSITORY/releases"
         private const val API_URL = "https://api.github.com/repos/$REPOSITORY/releases/latest"
 
