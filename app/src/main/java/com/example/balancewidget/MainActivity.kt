@@ -2,9 +2,11 @@ package com.example.balancewidget
 
 import android.os.Bundle
 import android.content.Intent
+import android.app.DownloadManager
 import android.graphics.Color
 import android.content.res.ColorStateList
 import android.net.Uri
+import android.os.Environment
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -29,6 +31,7 @@ import com.example.balancewidget.widget.WidgetUpdater
 import com.example.balancewidget.widget.WidgetRefreshScheduler
 import com.example.balancewidget.settings.AppSettings
 import com.example.balancewidget.settings.UpdateChecker
+import com.example.balancewidget.settings.ReleaseInfo
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -163,7 +166,7 @@ class MainActivity : AppCompatActivity() {
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
         }, matchWrap(bottom = 12))
         val name = input(form, "名称", "例如：DeepSeek 个人账号", existing?.name.orEmpty())
-        val provider = input(form, "Provider 类型", "custom、deepseek 或 sevnx", existing?.provider ?: "custom")
+        val provider = input(form, "Provider 类型", "custom、deepseek 或 relay（中转站）", existing?.provider ?: "custom")
         val base = input(form, "Base URL", "例如：https://api.deepseek.com", existing?.baseUrl.orEmpty(), InputType.TYPE_TEXT_VARIATION_URI)
         val path = input(form, "余额 API 路径", "例如：user/balance 或 v1/usage", existing?.path ?: "v1/usage")
         val key = input(form, "API Key", "仅保存于本机，未加密", existing?.apiKey.orEmpty(), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
@@ -262,7 +265,7 @@ class MainActivity : AppCompatActivity() {
             addView(row)
         }, matchWrap(bottom = 8))
         content.addView(TextView(this).apply {
-            text = "Android 会根据省电策略调整后台更新时间；主屏幕刷新按钮始终可以手动查询。"
+            text = "可输入任意分钟数。Android 会根据省电策略调整后台更新时间；主屏幕刷新按钮始终可以手动查询。"
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
         }, matchWrap(bottom = 12))
         content.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
@@ -270,7 +273,7 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { checkForUpdates() }
         }, matchWrap(bottom = 8))
         content.addView(MaterialButton(this).apply {
-            text = "打开更新页面"
+            text = "查看发布记录"
             setOnClickListener { openUrl(UpdateChecker.RELEASES_URL) }
         }, matchWrap(bottom = 20))
 
@@ -297,10 +300,38 @@ class MainActivity : AppCompatActivity() {
             setText(String.format("#%06X", settings.customColor and 0xFFFFFF))
             inputType = InputType.TYPE_CLASS_TEXT
         }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+        }
+        val palette = LinearLayout(this).apply { gravity = Gravity.CENTER; orientation = LinearLayout.HORIZONTAL }
+        val colors = intArrayOf(
+            Color.parseColor("#405F91"),
+            Color.parseColor("#006C4C"),
+            Color.parseColor("#8B4E00"),
+            Color.parseColor("#9C4146"),
+            Color.parseColor("#65558F"),
+            Color.parseColor("#00658A")
+        )
+        colors.forEach { color ->
+            palette.addView(MaterialButton(this).apply {
+                text = ""
+                contentDescription = String.format("选择主题色 #%06X", color and 0xFFFFFF)
+                backgroundTintList = ColorStateList.valueOf(color)
+                minWidth = 0
+                minimumWidth = dp(40)
+                minHeight = 0
+                minimumHeight = dp(40)
+                setOnClickListener { input.setText(String.format("#%06X", color and 0xFFFFFF)) }
+            }, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(4) })
+        }
         val field = TextInputLayout(this).apply { hint = "主题色 HEX"; addView(input) }
+        content.addView(TextView(this).apply { text = "调色盘"; setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge) }, matchWrap(bottom = 8))
+        content.addView(palette, matchWrap(bottom = 16))
+        content.addView(field, matchWrap())
         MaterialAlertDialogBuilder(this)
             .setTitle("更改主题色")
-            .setView(field)
+            .setView(content)
             .setMessage("请输入 #RRGGBB 或 #AARRGGBB，例如 #405F91")
             .setNegativeButton("取消", null)
             .setPositiveButton("应用") { _, _ ->
@@ -311,14 +342,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun chooseRefreshInterval() {
-        val values = arrayOf("15 分钟", "30 分钟", "60 分钟", "仅手动刷新")
-        val minutes = intArrayOf(15, 30, 60, 0)
-        val checked = minutes.indexOf(settings.refreshIntervalMinutes).coerceAtLeast(0)
-        MaterialAlertDialogBuilder(this).setTitle("自动刷新间隔")
-            .setSingleChoiceItems(values, checked) { dialog, which ->
-                settings.refreshIntervalMinutes = minutes[which]
+        val input = TextInputEditText(this).apply {
+            hint = "例如：30；输入 0 关闭自动刷新"
+            setText(settings.refreshIntervalMinutes.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        val field = TextInputLayout(this).apply { hint = "刷新间隔（分钟）"; addView(input) }
+        MaterialAlertDialogBuilder(this).setTitle("设置自动刷新间隔")
+            .setView(field)
+            .setMessage("可输入任意非负整数分钟数。系统会使用不精确定时任务，实际执行时间可能延后。")
+            .setNegativeButton("取消", null)
+            .setPositiveButton("保存") { _, _ ->
+                val minutes = input.text.toString().toIntOrNull()
+                if (minutes == null || minutes < 0) {
+                    Toast.makeText(this, "请输入非负整数", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                settings.refreshIntervalMinutes = minutes
                 WidgetRefreshScheduler.apply(this)
-                dialog.dismiss()
                 showSettings()
             }.show()
     }
@@ -328,11 +369,8 @@ class MainActivity : AppCompatActivity() {
         scope.launch {
             UpdateChecker().latestRelease().onSuccess { release ->
                 val current = BuildConfig.VERSION_NAME
-                if (release.version.isNotBlank() && release.version != current) {
-                    MaterialAlertDialogBuilder(this@MainActivity).setTitle("发现新版本 ${release.version}")
-                        .setMessage(release.notes.ifBlank { "GitHub Releases 中有可用更新。" })
-                        .setNegativeButton("稍后", null)
-                        .setPositiveButton("更新") { _, _ -> openUrl(release.pageUrl) }.show()
+                if (release.version.isNotBlank() && UpdateChecker.isNewer(release.version, current)) {
+                    showUpdatePage(release)
                 } else Toast.makeText(this@MainActivity, "当前已是最新版本", Toast.LENGTH_LONG).show()
             }.onFailure { error -> Toast.makeText(this@MainActivity, "检查失败：${error.message}", Toast.LENGTH_LONG).show() }
         }
@@ -340,6 +378,52 @@ class MainActivity : AppCompatActivity() {
 
     private fun openUrl(url: String) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    private fun showUpdatePage(release: ReleaseInfo) {
+        showingEditor = true
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(toolbar("发现新版本", "${BuildConfig.VERSION_NAME} -> ${release.version}").apply {
+            setNavigationIcon(com.google.android.material.R.drawable.ic_arrow_back_black_24)
+            setNavigationOnClickListener { showSettings() }
+        }, matchWrap())
+        val scroll = ScrollView(this)
+        val content = contentColumn()
+        content.addView(sectionTitle("BalanceWidget ${release.version}"), matchWrap(bottom = 8))
+        content.addView(TextView(this).apply {
+            text = if (release.notes.isBlank()) "此版本未提供更新说明。" else release.notes
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+        }, matchWrap(bottom = 24))
+        if (release.apkUrl != null) {
+            content.addView(MaterialButton(this).apply {
+                text = "下载并更新 APK"
+                setIconResource(android.R.drawable.stat_sys_download)
+                setOnClickListener { downloadUpdate(release) }
+            }, matchWrap())
+        } else {
+            content.addView(emptyState("尚无 APK 下载", "此 Release 没有上传 APK 文件。可以在发布记录中查看详情。"), matchWrap(bottom = 12))
+            content.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                text = "查看发布记录"
+                setOnClickListener { openUrl(release.pageUrl) }
+            }, matchWrap())
+        }
+        scroll.addView(content)
+        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        setContentView(root)
+        applyCustomColor(root)
+        applyInsets(root)
+        ViewCompat.requestApplyInsets(root)
+    }
+
+    private fun downloadUpdate(release: ReleaseInfo) {
+        val apkUrl = release.apkUrl ?: return
+        val request = DownloadManager.Request(Uri.parse(apkUrl))
+            .setTitle("BalanceWidget ${release.version}")
+            .setDescription("正在下载更新安装包")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "BalanceWidget-${release.version}.apk")
+        getSystemService(DownloadManager::class.java).enqueue(request)
+        Toast.makeText(this, "已开始下载，完成后请从通知栏安装", Toast.LENGTH_LONG).show()
     }
 
     private fun sectionTitle(text: String) = TextView(this).apply {

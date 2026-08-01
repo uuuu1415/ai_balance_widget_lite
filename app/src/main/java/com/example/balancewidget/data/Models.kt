@@ -18,10 +18,14 @@ data class Account(
 enum class ProviderType(val id: String) {
     CUSTOM("custom"),
     DEEPSEEK("deepseek"),
-    SEVNX("sevnx");
+    RELAY("relay");
 
     companion object {
-        fun fromId(id: String): ProviderType = entries.firstOrNull { it.id == id.lowercase() } ?: CUSTOM
+        fun fromId(id: String): ProviderType = when (id.lowercase()) {
+            // Preserve existing local configurations from the initial SevnX-oriented release.
+            "sevnx" -> RELAY
+            else -> entries.firstOrNull { it.id == id.lowercase() } ?: CUSTOM
+        }
     }
 }
 
