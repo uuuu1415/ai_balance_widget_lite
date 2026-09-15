@@ -26,6 +26,8 @@ class SingleBalanceWidget : AppWidgetProvider() {
             return
         }
 
+        // Restore cached content and click targets before waiting for the network.
+        updateWidgets(context)
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {

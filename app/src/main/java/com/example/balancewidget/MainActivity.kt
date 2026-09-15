@@ -78,6 +78,11 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        WidgetUpdater.update(this)
+    }
+
     private fun showAccounts() {
         showingEditor = false
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
